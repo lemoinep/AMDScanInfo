@@ -5,7 +5,7 @@
 #include <rocm_smi/rocm_smi.h>
 
 
-// lok this web page for more informations  https://manpages.ubuntu.com/manpages/lunar/man1/rocm-smi.1.html
+// look this web page for more informations  https://manpages.ubuntu.com/manpages/lunar/man1/rocm-smi.1.html
 
 void checkReturn(rsmi_status_t ret, const char* message) {
     if (ret != RSMI_STATUS_SUCCESS) {
