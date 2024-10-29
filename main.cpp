@@ -4,8 +4,67 @@
 #include <cstring>
 #include <rocm_smi/rocm_smi.h>
 
+#include <string>
+#include <algorithm>
+#include <hip/hip_runtime.h>
+
+
 
 // look this web page for more informations  https://manpages.ubuntu.com/manpages/lunar/man1/rocm-smi.1.html
+
+
+std::vector<std::string> getROCmAgents() {
+    std::vector<std::string> agents;
+    int deviceCount = 0;
+    hipError_t error = hipGetDeviceCount(&deviceCount);
+    
+    if (error != hipSuccess) {
+        std::cerr << "Error getting number of devices: " 
+                  << hipGetErrorString(error) << std::endl;
+        return agents;
+    }
+
+    for (int i = 0; i < deviceCount; ++i) {
+        hipDevice_t device;
+        error = hipDeviceGet(&device, i);
+        if (error != hipSuccess) {
+            std::cerr << "Error getting number of devices " << i << ": " 
+                      << hipGetErrorString(error) << std::endl;
+            continue;
+        }
+
+        hipDeviceProp_t props;
+        error = hipGetDeviceProperties(&props, device);
+        if (error != hipSuccess) {
+            std::cerr << "Error getting device properties " << i << ": " 
+                      << hipGetErrorString(error) << std::endl;
+            continue;
+        }
+
+        std::string gcnArchName = props.gcnArchName;
+        if (std::find(agents.begin(), agents.end(), gcnArchName) == agents.end()) {
+            agents.push_back(gcnArchName);
+        }
+    }
+
+    return agents;
+}
+
+
+void writeInfoCardNameGPU() 
+{
+    std::vector<std::string> rocmAvailableAgents = getROCmAgents();
+    std::vector<std::string> gpuTargets;
+    for (const auto& agent : rocmAvailableAgents) {
+        if (agent.substr(0, 3) == "gfx") {
+            gpuTargets.push_back(agent);
+            std::cout << "========================================================================" << std::endl;
+            std::cout << "GPU card name : " << agent << std::endl;
+            std::cout << "------------------------------------------------------------------------" << std::endl;
+        }
+    }
+}
+
 
 void checkReturn(rsmi_status_t ret, const char* message) {
     if (ret != RSMI_STATUS_SUCCESS) {
@@ -117,6 +176,10 @@ void writeGPUInfo(uint32_t deviceIndex) {
     std::cout << "Driver Version: " << driver_version << std::endl; 
 }
 
+
+
+
+
 void writeAllGPUsInfo() {
     uint32_t numDevices;
     rsmi_status_t ret = rsmi_num_monitor_devices(&numDevices);
@@ -158,7 +221,9 @@ void writeHelp() {
     std::cout << "  -a, --all          Display all information for all GPUs" << std::endl;
     std::cout << "  -u, --usage        Display GPU usage for all GPUs" << std::endl;
     std::cout << "  -t, --temperature  Display GPU temperature for all GPUs" << std::endl;
+    std::cout << "  -n, --name         Display GPU Name" << std::endl;
 }
+
 
 int main(int argc, char* argv[]) {
     rsmi_status_t ret = rsmi_init(0);
@@ -181,7 +246,9 @@ int main(int argc, char* argv[]) {
         checkReturn(ret, "Get number of devices");
         for (uint32_t i = 0; i < numDevices; ++i) {
             writeGPUTemperature(i);
-        }
+        } 
+    } else if (argc == 2 && (strcmp(argv[1], "-n") == 0 || strcmp(argv[1], "--name") == 0)) {
+        writeInfoCardNameGPU();
     } else {
         std::cerr << "Invalid option. Use -h or --help for usage information." << std::endl;
     }
